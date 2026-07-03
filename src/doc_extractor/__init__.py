@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
-
 from .loader import load_pdf
 from .merge import merge_extractions
 from .models import ExtractionResult, OutputSchema
