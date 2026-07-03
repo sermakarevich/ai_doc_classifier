@@ -45,7 +45,10 @@ async def fan_out(
     Raises
     ------
     AllCallsFailedError
-        If zero calls succeeded.
+        If zero calls succeeded *and* at least one call raised a non-timeout
+        error. When every call times out (no successes, no errors) an empty
+        list is returned instead — timeouts are dropped, not treated as
+        failures.
     """
     tasks_with_provider: list[tuple[Any, asyncio.Task[T]]] = []
     for p in providers:
