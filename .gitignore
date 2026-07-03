@@ -8,4 +8,3 @@ dist/
 *.egg-info/
 .claude/
 .playwright-mcp/
-*.pdf
