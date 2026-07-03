@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from typing import NamedTuple
 
 from .models import (
     ExtractedField,
@@ -17,6 +18,13 @@ from .provider import OllamaProvider
 from .prompts import merge_prompt
 
 logger = logging.getLogger(__name__)
+
+
+class MergedGroup(NamedTuple):
+    canonical: str | None
+    count: int
+    variants: list[str]
+    groundings: list[str]
 
 
 def normalize(v: str) -> str:
@@ -110,14 +118,13 @@ async def merge_field(
 
 def _fallback_to_pre_groups(
     norm_order: list[str], norm_hits: dict[str, list[FieldHit]], null_hits: list[FieldHit]
-) -> list[tuple[str | None, int, list[str], list[str]]]:
-    """Each pre-group becomes its own semantic group (fallback path)."""
-    items: list[tuple[str | None, int, list[str], list[str]]] = []
+) -> list[MergedGroup]:
+    items: list[MergedGroup] = []
     for n in norm_order:
         hlist = norm_hits[n]
-        items.append((hlist[0].value, len(hlist), [hlist[0].value], [h.grounding for h in hlist if h.grounding]))
+        items.append(MergedGroup(hlist[0].value, len(hlist), [hlist[0].value], [h.grounding for h in hlist if h.grounding]))
     if null_hits:
-        items.append((None, len(null_hits), [], [h.grounding for h in null_hits if h.grounding]))
+        items.append(MergedGroup(None, len(null_hits), [], [h.grounding for h in null_hits if h.grounding]))
     return items
 
 
@@ -127,9 +134,8 @@ def _build_semantic_groups(
     norm_hits: dict[str, list[FieldHit]],
     merge_result: MergeGroups,
     null_hits: list[FieldHit],
-) -> list[tuple[str | None, int, list[str], list[str]]]:
-    """Map pre-groups into semantic groups defined by LLM."""
-    items: list[tuple[str | None, int, list[str], list[str]]] = []  # (canonical, count, variants, groundings)
+) -> list[MergedGroup]:
+    items: list[MergedGroup] = []
     for mg in merge_result.groups:
         member_raw_indices: list[int] = []
         for v in mg.variants:
@@ -150,19 +156,19 @@ def _build_semantic_groups(
             count += len(hlist)
             grounds.extend(h.grounding for h in hlist if h.grounding)
             variants.append(raw_variants[idx])
-        items.append((canonical, count, variants, grounds))
+        items.append(MergedGroup(canonical, count, variants, grounds))
 
     if null_hits:
-        items.append((None, len(null_hits), [], [h.grounding for h in null_hits if h.grounding]))
+        items.append(MergedGroup(None, len(null_hits), [], [h.grounding for h in null_hits if h.grounding]))
     return items
 
 
 def _merged_to_value_groups(
-    items: list[tuple[str | None, int, list[str], list[str]]]
+    items: list[MergedGroup]
 ) -> list[ValueGroup]:
     return [
-        ValueGroup(canonical_value=c, count=t, variants=list(set(v)), groundings=list(dict.fromkeys(g)))
-        for c, t, v, g in items
+        ValueGroup(canonical_value=g.canonical, count=g.count, variants=list(dict.fromkeys(g.variants)), groundings=list(dict.fromkeys(g.groundings)))
+        for g in items
     ]
 
 
