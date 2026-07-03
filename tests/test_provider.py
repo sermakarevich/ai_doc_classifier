@@ -96,17 +96,19 @@ async def test_invalid_twice_raises_structured_output_error():
     assert call_count == 2
 
 
-async def test_load_providers_default_gives_2_providers():
-    """(d) load_providers default gives 2 providers with expected models."""
+async def test_load_providers_default_matches_constants():
+    """(d) load_providers default mirrors DEFAULT_PROVIDERS from constants."""
+    from doc_extractor.constants import DEFAULT_PROVIDERS
+
     sentinel = "\x00__FAKE_KEY_d02o_default__"
     orig = os.environ.pop(sentinel, None)
 
     with patch("os.environ.get", return_value=None):
         providers = load_providers(sentinel)
 
-    assert len(providers) == 2
-    assert providers[0].name == "qwen3.6:latest"
-    assert providers[1].name == "gemma4:latest"
+    assert len(providers) == len(DEFAULT_PROVIDERS)
+    for provider, spec in zip(providers, DEFAULT_PROVIDERS):
+        assert provider.name == spec["model"]
 
     if orig is not None:
         os.environ[sentinel] = orig

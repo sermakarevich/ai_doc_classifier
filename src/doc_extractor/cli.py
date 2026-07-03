@@ -36,16 +36,10 @@ def create_parser() -> argparse.ArgumentParser:
         help="Optional path to write JSON result to",
     )
     extract_parser.add_argument(
-        "--mode",
-        choices=["text", "vision"],
-        default="text",
-        help="'text': extract PDF text and send it; 'vision': render pages to PNG and send images (requires vision-capable models)",
-    )
-    extract_parser.add_argument(
         "--max-pages",
         type=int,
         default=DEFAULT_MAX_PAGES,
-        help=f"Vision mode: max number of pages to render (default: {DEFAULT_MAX_PAGES})",
+        help=f"Max number of pages to render (default: {DEFAULT_MAX_PAGES})",
     )
     extract_parser.add_argument(
         "--timeout",
@@ -77,7 +71,6 @@ def main() -> None:
 
     config = ExtractionConfig(
         calls_per_provider=args.calls_per_provider,
-        mode=args.mode,
         max_pages=args.max_pages,
         timeout_s=args.timeout,
     )

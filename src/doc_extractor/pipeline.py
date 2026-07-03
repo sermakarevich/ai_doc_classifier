@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from .models import ForecastExtraction, ForecastResult
-from .prompts import forecast_prompt, vision_forecast_prompt
+from .prompts import vision_forecast_prompt
 from .provider import OllamaProvider, load_providers
 from .fanout import fan_out
-from .loader import load_pdf, render_pdf_pages
+from .loader import render_pdf_pages
 from .merge import merge_forecasts
 
 from pydantic import BaseModel
@@ -22,7 +20,6 @@ from .constants import (
 class ExtractionConfig(BaseModel):
     calls_per_provider: int = DEFAULT_CALLS_PER_PROVIDER
     timeout_s: float = DEFAULT_TIMEOUT_S
-    mode: Literal["text", "vision"] = "text"
     max_pages: int = DEFAULT_MAX_PAGES
     zoom: float = DEFAULT_ZOOM
 
@@ -35,18 +32,12 @@ async def run_extraction(
     providers = providers or load_providers()
     config = config or ExtractionConfig()
 
-    if config.mode == "vision":
-        images = render_pdf_pages(pdf_path, zoom=config.zoom, max_pages=config.max_pages)
-        prompt = vision_forecast_prompt(n_pages=len(images))
-        call = lambda p: p.structured(prompt, ForecastExtraction, images=images)
-    else:
-        doc = load_pdf(pdf_path)
-        prompt = forecast_prompt(doc.text)
-        call = lambda p: p.structured(prompt, ForecastExtraction)
+    images = render_pdf_pages(pdf_path, zoom=config.zoom, max_pages=config.max_pages)
+    prompt = vision_forecast_prompt(n_pages=len(images))
 
     extractions = await fan_out(
         providers,
-        call,
+        lambda p: p.structured(prompt, ForecastExtraction, images=images),
         calls_per_provider=config.calls_per_provider,
         timeout_s=config.timeout_s,
     )

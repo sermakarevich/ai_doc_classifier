@@ -91,7 +91,6 @@ def test_parser_extract_defaults():
     assert args.pdf == "test.pdf"
     assert args.calls_per_provider == 2
     assert args.output is None
-    assert args.mode == "text"
     assert args.max_pages == 12
 
 
@@ -102,13 +101,11 @@ def test_parser_extract_with_all_options():
         "x.pdf",
         "--calls-per-provider", "3",
         "--output", "out.json",
-        "--mode", "vision",
         "--max-pages", "6",
     ])
     assert args.pdf == "x.pdf"
     assert args.calls_per_provider == 3
     assert args.output == "out.json"
-    assert args.mode == "vision"
     assert args.max_pages == 6
 
 
