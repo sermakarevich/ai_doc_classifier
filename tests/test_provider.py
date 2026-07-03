@@ -171,3 +171,20 @@ async def test_structured_no_images_key_when_absent():
 
     payload = client_ctx.post.call_args.kwargs["json"]
     assert "images" not in payload["messages"][0]
+
+
+async def test_structured_transport_error_raises_structured_output_error():
+    """(f) httpx.ConnectError -> StructuredOutputError."""
+    import httpx
+
+    config = ProviderConfig(model="qwen3.6:latest")
+    provider = OllamaProvider(config)
+
+    client_ctx = AsyncMock()
+    client_ctx.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
+    client_ctx.__aenter__ = AsyncMock(return_value=client_ctx)
+    client_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("doc_extractor.provider.httpx.AsyncClient", return_value=client_ctx):
+        with pytest.raises(StructuredOutputError, match="Connection refused"):
+            await provider.structured("prompt", SchemaExtraction)
