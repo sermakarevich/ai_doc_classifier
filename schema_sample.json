@@ -1,0 +1,12 @@
+{
+  "schema_id": "mckinsey_report",
+  "fields": [
+    {"name": "title", "description": "Full title of the report", "type": "string"},
+    {"name": "publisher", "description": "Organization that published the report", "type": "string"},
+    {"name": "publication_date", "description": "Publication date of the report", "type": "string"},
+    {"name": "authors", "description": "List of report authors, comma-separated", "type": "string"},
+    {"name": "num_arenas", "description": "Number of future arenas of competition identified", "type": "integer"},
+    {"name": "revenue_projection", "description": "Projected revenue range of the arenas by 2040", "type": "string"},
+    {"name": "projection_year", "description": "Target year of the projections", "type": "integer"}
+  ]
+}
