@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pathlib
+import tempfile
+
 import pytest
 
 from doc_extractor.cli import create_parser
@@ -107,3 +110,37 @@ def test_parser_extract_with_all_options():
     assert args.output == "out.json"
     assert args.mode == "vision"
     assert args.max_pages == 6
+
+
+# ---- zero-calls guard ----
+
+def test_main_zero_calls_exits_1(monkeypatch):
+    """When all provider calls fail, total_calls==0 and main() exits 1."""
+    from doc_extractor.cli import main
+    from doc_extractor.models import ForecastResult
+
+    fake_result = ForecastResult(
+        document="x.pdf",
+        forecasts=[],
+        total_calls=0,
+        extraction_time_s=None,
+        model_versions={},
+        provider_stats={},
+    )
+
+    def fake_run(coro):
+        return fake_result
+
+    monkeypatch.setattr("asyncio.run", fake_run)
+
+    # Create a temporary pdf so the exists check passes
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.close()
+    monkeypatch.setattr("sys.argv", ["doc_extractor", "extract", tmp.name])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+    pathlib.Path(tmp.name).unlink(missing_ok=True)

@@ -84,6 +84,12 @@ def main() -> None:
         )
     )
 
+    if result.total_calls == 0:
+        logger.error(
+            "Extraction failed: no provider calls succeeded (all failed or timed out).",
+        )
+        sys.exit(1)
+
     json_output = result.model_dump_json(indent=2)
     print(json_output)
 
