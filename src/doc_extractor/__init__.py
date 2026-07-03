@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from .loader import load_pdf
 from .merge import merge_extractions
 from .models import ExtractionResult, OutputSchema
-from .pipeline import run_extraction
+from .pipeline import ExtractionConfig, run_extraction
 from .provider import load_providers
 
 __all__ = [
