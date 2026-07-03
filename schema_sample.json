@@ -1,12 +1,12 @@
 {
-  "schema_id": "mckinsey_report",
+  "schema_id": "generic_document",
   "fields": [
-    {"name": "title", "description": "Full title of the report", "type": "string"},
-    {"name": "publisher", "description": "Organization that published the report", "type": "string"},
-    {"name": "publication_date", "description": "Publication date of the report", "type": "string"},
-    {"name": "authors", "description": "List of report authors, comma-separated", "type": "string"},
-    {"name": "num_arenas", "description": "Number of future arenas of competition identified", "type": "integer"},
-    {"name": "revenue_projection", "description": "Projected revenue range of the arenas by 2040", "type": "string"},
-    {"name": "projection_year", "description": "Target year of the projections", "type": "integer"}
+    {"name": "title", "description": "Full title of the document", "type": "string"},
+    {"name": "document_type", "description": "Kind of document, e.g. report, article, invoice, contract, manual", "type": "string"},
+    {"name": "author_or_publisher", "description": "Person or organization that wrote or published the document", "type": "string"},
+    {"name": "date", "description": "Publication or creation date mentioned in the document", "type": "string"},
+    {"name": "language", "description": "Main language of the document", "type": "string"},
+    {"name": "subject", "description": "Main topic of the document in a few words", "type": "string"},
+    {"name": "summary", "description": "One-sentence summary of what the document is about", "type": "string"}
   ]
 }

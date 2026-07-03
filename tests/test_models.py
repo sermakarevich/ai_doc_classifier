@@ -17,10 +17,10 @@ class TestOutputSchema:
     def test_parses_schema_sample_json(self):
         data = SCHEMA_FILE.read_text()
         schema = OutputSchema.model_validate_json(data)
-        assert schema.schema_id == "mckinsey_report"
+        assert schema.schema_id == "generic_document"
         assert len(schema.fields) == 7
         assert schema.fields[0].name == "title"
-        assert schema.fields[0].description == "Full title of the report"
+        assert schema.fields[0].description == "Full title of the document"
         assert schema.fields[0].type == "string"
 
     def test_dump_and_reload(self):
