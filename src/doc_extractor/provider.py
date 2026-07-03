@@ -71,7 +71,7 @@ class OllamaProvider:
                     resp = await client.post(
                         f"{self.base_url}/api/chat",
                         json=payload,
-                        timeout=httpx.Timeout(300),
+                        timeout=httpx.Timeout(None),
                     )
                     resp.raise_for_status()
                     body = resp.json()

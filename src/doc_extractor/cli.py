@@ -42,6 +42,12 @@ def create_parser() -> argparse.ArgumentParser:
         default=12,
         help="Vision mode: max number of pages to render (default: 12)",
     )
+    extract_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=240.0,
+        help="Per-call timeout in seconds (default: 240)",
+    )
     return parser
 
 
@@ -68,6 +74,7 @@ def main() -> None:
         calls_per_provider=args.calls_per_provider,
         mode=args.mode,
         max_pages=args.max_pages,
+        timeout_s=args.timeout,
     )
 
     result = asyncio.run(
