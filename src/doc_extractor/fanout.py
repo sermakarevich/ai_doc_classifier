@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable, TypeVar
 
+from .constants import DEFAULT_CALLS_PER_PROVIDER, DEFAULT_TIMEOUT_S
+
 T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
@@ -21,8 +23,8 @@ async def fan_out(
     providers: list[Any],
     call: Callable[[Any], Awaitable[T]],
     *,
-    calls_per_provider: int = 2,
-    timeout_s: float = 240.0,
+    calls_per_provider: int = DEFAULT_CALLS_PER_PROVIDER,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
 ) -> list[T]:
     """Run *calls_per_provider* calls against each provider, collect successes.
 
