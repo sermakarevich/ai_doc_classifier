@@ -8,6 +8,9 @@ from .models import (
     ExtractedField,
     FieldHit,
     FieldSpec,
+    Forecast,
+    ForecastExtraction,
+    MergedForecast,
     MergeGroup,
     MergeGroups,
     OutputSchema,
@@ -202,4 +205,109 @@ async def merge_extractions(
                 await merge_field(name=spec.name, spec=spec, hits=hits, total_calls=total_calls, merge_provider=merge_provider)
             )
 
+    return results
+
+
+# ---- forecast merging ----
+
+FORECAST_VALUE_FIELDS = (
+    "revenue_now", "revenue_forecast", "year_now", "year_forecast", "cagr", "profit"
+)
+
+
+def _majority_value(values: list[str]) -> str | None:
+    """Most common value by normalized form; ties broken by first appearance."""
+    if not values:
+        return None
+    counts: dict[str, int] = {}
+    reps: dict[str, str] = {}
+    for v in values:
+        n = normalize(v)
+        counts[n] = counts.get(n, 0) + 1
+        reps.setdefault(n, v)
+    best = max(counts, key=lambda n: counts[n])
+    return reps[best]
+
+
+async def merge_forecasts(
+    extractions: list[ForecastExtraction],
+    merge_provider: OllamaProvider,
+) -> list[MergedForecast]:
+    """Group forecasts from all calls by sector, majority-vote each field."""
+    total_calls = len(extractions)
+
+    # Pre-group by normalized sector name; remember first raw name and call index
+    norm_members: dict[str, list[tuple[int, Forecast]]] = {}
+    norm_order: list[str] = []
+    reps: dict[str, str] = {}
+    for idx, ext in enumerate(extractions):
+        for f in ext.forecasts:
+            if not f.sector_name or not f.sector_name.strip():
+                continue
+            n = normalize(f.sector_name)
+            if n not in norm_members:
+                norm_members[n] = []
+                norm_order.append(n)
+                reps[n] = f.sector_name
+            norm_members[n].append((idx, f))
+
+    if not norm_order:
+        return []
+
+    # Semantic merge of sector-name variants via LLM (reuses merge_prompt/MergeGroups)
+    groups: list[list[str]]  # lists of norms
+    canonicals: list[str]
+    if len(norm_order) == 1:
+        groups = [[norm_order[0]]]
+        canonicals = [reps[norm_order[0]]]
+    else:
+        raw_variants = [reps[n] for n in norm_order]
+        try:
+            merge_result: MergeGroups = await merge_provider.structured(
+                merge_prompt("sector_name", "name of the sector/market/arena being forecast", raw_variants),
+                MergeGroups,
+            )
+            output_variants: set[str] = set()
+            for mg in merge_result.groups:
+                output_variants.update(mg.variants)
+            if output_variants != set(raw_variants):
+                raise ValueError("LLM lost or invented sector names")
+            raw_to_norm = {reps[n]: n for n in norm_order}
+            groups = []
+            canonicals = []
+            for mg in merge_result.groups:
+                member_norms = [raw_to_norm[v] for v in mg.variants if v in raw_to_norm]
+                if not member_norms:
+                    continue
+                groups.append(member_norms)
+                canonicals.append(
+                    mg.canonical_value if mg.canonical_value in raw_to_norm else reps[member_norms[0]]
+                )
+        except Exception as err:
+            logger.warning("merge_forecasts: sector merge failed (%s); using pre-groups.", err)
+            groups = [[n] for n in norm_order]
+            canonicals = [reps[n] for n in norm_order]
+
+    results: list[MergedForecast] = []
+    for member_norms, canonical in zip(groups, canonicals):
+        members = [m for n in member_norms for m in norm_members[n]]
+        call_indices = {idx for idx, _ in members}
+        count = len(call_indices)
+        values = {
+            field: _majority_value(
+                [getattr(f, field) for _, f in members if getattr(f, field) is not None]
+            )
+            for field in FORECAST_VALUE_FIELDS
+        }
+        results.append(
+            MergedForecast(
+                sector_name=canonical,
+                count=count,
+                total_calls=total_calls,
+                score=count / total_calls if total_calls else 0.0,
+                **values,
+            )
+        )
+
+    results.sort(key=lambda r: (-r.score, r.sector_name.casefold()))
     return results

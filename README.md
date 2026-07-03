@@ -1,8 +1,11 @@
 # ai_doc_classifier
 
-Multi-call, multi-model structured document extraction. Sends a PDF to several local
-Ollama models multiple times, then merges the answers per field into a consensus value
-with a confidence score and grounding quotes.
+Multi-call, multi-model forecast extraction from documents. Sends a PDF to several local
+Ollama models multiple times, then merges the answers into a consensus list of sector
+forecasts, each with a confidence score.
+
+Each forecast has: `sector_name`, `revenue_now`, `revenue_forecast`, `year_now`,
+`year_forecast`, `cagr`, `profit`.
 
 ## Requirements
 
@@ -14,32 +17,41 @@ with a confidence score and grounding quotes.
 
 ```bash
 uv sync
-uv run python -m doc_extractor extract document.pdf --schema schema_sample.json --output result.json
+uv run python -m doc_extractor extract document.pdf --output result.json
+```
+
+Vision mode — render pages to PNG and send images instead of extracted text
+(requires vision-capable models, e.g. gemma4):
+
+```bash
+uv run python -m doc_extractor extract document.pdf --mode vision --max-pages 6
 ```
 
 Or via just:
 
 ```bash
-just run                      # bundled sample PDF + schema_sample.json
-just run my.pdf my_schema.json
+just run                      # bundled sample PDF
+just run my.pdf "--mode vision"
 just test
 ```
 
 ## Configuration
 
 Providers come from the `DOC_EXTRACTOR_PROVIDERS` env var (JSON list); default is
-`qwen3.5:27b` and `gemma4:latest`:
+`qwen3.6:latest` and `gemma4:latest`:
 
 ```bash
-export DOC_EXTRACTOR_PROVIDERS='[{"model": "qwen3.5:27b"}, {"model": "gemma4:latest"}]'
+export DOC_EXTRACTOR_PROVIDERS='[{"model": "qwen3.6:latest"}, {"model": "gemma4:latest"}]'
 ```
 
-Schemas are JSON files with `schema_id` and `fields` (`name`, `description`, `type`) —
-see `schema_sample.json`.
+Fallback defaults live in `src/doc_extractor/provider.py` (`load_providers`).
+Calls per provider: `--calls-per-provider N`. Timeout: `ExtractionConfig.timeout_s`.
 
 ## How it works
 
-1. `loader.py` — extract PDF text (PyMuPDF)
+1. `loader.py` — extract PDF text, or render pages to PNG in vision mode (PyMuPDF)
 2. `fanout.py` — N parallel calls per provider with per-call timeout
-3. `merge.py` — per field: normalize + group values, LLM-merge semantic duplicates, pick winner by vote count, score = count / total_calls
-4. Result printed as JSON (`ExtractionResult`)
+3. `merge.py` — group forecasts across calls by sector name (normalization + LLM
+   semantic merge of name variants), majority-vote each field, score = share of calls
+   that saw the sector
+4. Result printed as JSON (`ForecastResult`)

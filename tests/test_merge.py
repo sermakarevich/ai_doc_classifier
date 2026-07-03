@@ -219,3 +219,93 @@ async def test_merge_extractions_absent_field_and_ignore_unknown():
     assert author.count == 0
     assert author.score == 0.0
     assert len(author.candidates) == 0
+
+
+# ---- merge_forecasts ----
+
+from doc_extractor.merge import merge_forecasts
+from doc_extractor.models import Forecast, ForecastExtraction, MergeGroup, MergeGroups
+
+
+class _FakeMergeProvider:
+    """Returns a fixed MergeGroups; records whether it was called."""
+
+    def __init__(self, groups=None):
+        self.called = False
+        self._groups = groups
+
+    async def structured(self, prompt, response_model):
+        self.called = True
+        return self._groups
+
+
+def _fc(sector, **kw):
+    return Forecast(sector_name=sector, **kw)
+
+
+async def test_merge_forecasts_single_sector_no_llm():
+    exts = [
+        ForecastExtraction(forecasts=[_fc("AI", revenue_forecast="$5T")]),
+        ForecastExtraction(forecasts=[_fc("ai ", revenue_forecast="$5T")]),
+    ]
+    provider = _FakeMergeProvider()
+    merged = await merge_forecasts(exts, provider)
+    assert not provider.called  # single normalized group -> no LLM call
+    assert len(merged) == 1
+    assert merged[0].count == 2
+    assert merged[0].score == 1.0
+    assert merged[0].revenue_forecast == "$5T"
+
+
+async def test_merge_forecasts_semantic_groups():
+    exts = [
+        ForecastExtraction(forecasts=[_fc("AI", cagr="20%")]),
+        ForecastExtraction(forecasts=[_fc("Artificial Intelligence", cagr="20%")]),
+        ForecastExtraction(forecasts=[_fc("Robotics", cagr="15%")]),
+    ]
+    provider = _FakeMergeProvider(
+        MergeGroups(groups=[
+            MergeGroup(canonical_value="Artificial Intelligence", variants=["AI", "Artificial Intelligence"]),
+            MergeGroup(canonical_value="Robotics", variants=["Robotics"]),
+        ])
+    )
+    merged = await merge_forecasts(exts, provider)
+    assert provider.called
+    assert len(merged) == 2
+    ai = next(m for m in merged if m.sector_name == "Artificial Intelligence")
+    assert ai.count == 2
+    assert ai.cagr == "20%"
+    robotics = next(m for m in merged if m.sector_name == "Robotics")
+    assert robotics.count == 1
+
+
+async def test_merge_forecasts_llm_failure_falls_back():
+    exts = [
+        ForecastExtraction(forecasts=[_fc("AI")]),
+        ForecastExtraction(forecasts=[_fc("Robotics")]),
+    ]
+
+    class _Boom:
+        async def structured(self, prompt, response_model):
+            raise RuntimeError("boom")
+
+    merged = await merge_forecasts(exts, _Boom())
+    assert {m.sector_name for m in merged} == {"AI", "Robotics"}
+
+
+async def test_merge_forecasts_majority_vote_per_field():
+    exts = [
+        ForecastExtraction(forecasts=[_fc("AI", cagr="20%")]),
+        ForecastExtraction(forecasts=[_fc("AI", cagr="20%")]),
+        ForecastExtraction(forecasts=[_fc("AI", cagr="25%")]),
+        ForecastExtraction(forecasts=[_fc("AI", cagr=None)]),
+    ]
+    merged = await merge_forecasts(exts, _FakeMergeProvider())
+    assert len(merged) == 1
+    assert merged[0].cagr == "20%"
+    assert merged[0].count == 4
+
+
+async def test_merge_forecasts_empty():
+    merged = await merge_forecasts([ForecastExtraction(forecasts=[])], _FakeMergeProvider())
+    assert merged == []

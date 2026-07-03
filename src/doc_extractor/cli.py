@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import logging
 import sys
 from pathlib import Path
 
-from doc_extractor.models import OutputSchema
 from doc_extractor.pipeline import ExtractionConfig, run_extraction
 
 logger = logging.getLogger(__name__)
@@ -16,16 +14,11 @@ logger = logging.getLogger(__name__)
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="doc_extractor",
-        description="Multi-call, multi-model structured document extraction",
+        description="Multi-call, multi-model forecast extraction from documents",
     )
     subparsers = parser.add_subparsers(dest="command")
-    extract_parser = subparsers.add_parser("extract", help="Extract fields from a PDF")
+    extract_parser = subparsers.add_parser("extract", help="Extract sector forecasts from a PDF")
     extract_parser.add_argument("pdf", help="Path to PDF file")
-    extract_parser.add_argument(
-        "--schema",
-        required=True,
-        help="Path to OutputSchema JSON file",
-    )
     extract_parser.add_argument(
         "--calls-per-provider",
         type=int,
@@ -66,13 +59,10 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    schema_path = Path(args.schema)
-    if not schema_path.exists():
-        logger.error("Schema file not found: %s", schema_path)
+    pdf_path = Path(args.pdf)
+    if not pdf_path.exists():
+        logger.error("PDF file not found: %s", pdf_path)
         sys.exit(1)
-
-    schema_dict = json.loads(schema_path.read_text())
-    schema = OutputSchema.model_validate(schema_dict)
 
     config = ExtractionConfig(
         calls_per_provider=args.calls_per_provider,
@@ -83,7 +73,6 @@ def main() -> None:
     result = asyncio.run(
         run_extraction(
             pdf_path=args.pdf,
-            schema=schema,
             config=config,
         )
     )

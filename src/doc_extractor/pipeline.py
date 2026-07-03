@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from .models import ExtractionResult, OutputSchema, SchemaExtraction
-from .prompts import extraction_prompt, vision_extraction_prompt
+from .models import ForecastExtraction, ForecastResult
+from .prompts import forecast_prompt, vision_forecast_prompt
 from .provider import OllamaProvider, load_providers
 from .fanout import fan_out
 from .loader import load_pdf, render_pdf_pages
-from .merge import merge_extractions
+from .merge import merge_forecasts
 
 from pydantic import BaseModel
 
@@ -22,21 +22,20 @@ class ExtractionConfig(BaseModel):
 
 async def run_extraction(
     pdf_path: str,
-    schema: OutputSchema,
     providers: list[OllamaProvider] | None = None,
     config: ExtractionConfig | None = None,
-) -> ExtractionResult:
+) -> ForecastResult:
     providers = providers or load_providers()
     config = config or ExtractionConfig()
 
     if config.mode == "vision":
         images = render_pdf_pages(pdf_path, zoom=config.zoom, max_pages=config.max_pages)
-        prompt = vision_extraction_prompt(schema, n_pages=len(images))
-        call = lambda p: p.structured(prompt, SchemaExtraction, images=images)
+        prompt = vision_forecast_prompt(n_pages=len(images))
+        call = lambda p: p.structured(prompt, ForecastExtraction, images=images)
     else:
         doc = load_pdf(pdf_path)
-        prompt = extraction_prompt(doc.text, schema)
-        call = lambda p: p.structured(prompt, SchemaExtraction)
+        prompt = forecast_prompt(doc.text)
+        call = lambda p: p.structured(prompt, ForecastExtraction)
 
     extractions = await fan_out(
         providers,
@@ -44,10 +43,9 @@ async def run_extraction(
         calls_per_provider=config.calls_per_provider,
         timeout_s=config.timeout_s,
     )
-    fields = await merge_extractions(schema, extractions, merge_provider=providers[0])
-    return ExtractionResult(
-        schema_id=schema.schema_id,
+    forecasts = await merge_forecasts(extractions, merge_provider=providers[0])
+    return ForecastResult(
         document=pdf_path,
         total_calls=len(extractions),
-        fields=fields,
+        forecasts=forecasts,
     )

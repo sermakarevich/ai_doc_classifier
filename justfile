@@ -1,9 +1,9 @@
 default:
     @just --list
 
-# Extract fields from a PDF using the sample schema
-run pdf="the-next-big-arenas-of-competition-executive-summary-final.pdf" schema="schema_sample.json" *args="":
-    uv run python -m doc_extractor extract {{pdf}} --schema {{schema}} {{args}}
+# Extract sector forecasts from a PDF
+run pdf="the-next-big-arenas-of-competition-executive-summary-final.pdf" *args="":
+    uv run python -m doc_extractor extract {{pdf}} {{args}}
 
 # Run test suite
 test:

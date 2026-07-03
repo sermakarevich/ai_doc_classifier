@@ -1,4 +1,3 @@
-import json
 import os
 import pathlib
 
@@ -6,54 +5,33 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PDF_PATH = ROOT / "the-next-big-arenas-of-competition-executive-summary-final.pdf"
-SCHEMA_PATH = ROOT / "schema_sample.json"
 
 
-@pytest.fixture(scope="module")
-def schema() -> dict:
-    with open(SCHEMA_PATH) as f:
-        data = json.load(f)
-    return data
-
-
+@pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.skipif(
     os.environ.get("RUN_INTEGRATION") != "1",
     reason="RUN_INTEGRATION=1 required to run integration tests",
 )
-async def test_live_extraction_on_mckinsey_pdf(schema: dict):
-    """End-to-end: load PDF, fan-out LLM calls, merge, assert results."""
-    from doc_extractor.models import OutputSchema
+async def test_live_forecast_extraction_on_mckinsey_pdf():
+    """End-to-end: load PDF, fan-out LLM calls, merge forecasts, assert results."""
     from doc_extractor.pipeline import run_extraction, ExtractionConfig
     from doc_extractor.provider import load_providers
 
     assert PDF_PATH.exists(), f"Test PDF not found at {PDF_PATH}"
-    assert schema["schema_id"] == "generic_document"
-    assert len(schema["fields"]) == 7
-
-    providers = load_providers()
-    config = ExtractionConfig(calls_per_provider=2)
 
     result = await run_extraction(
         str(PDF_PATH),
-        OutputSchema(**schema),
-        providers=providers,
-        config=config,
+        providers=load_providers(),
+        config=ExtractionConfig(calls_per_provider=2),
     )
 
-    # total_calls must be at least 2 (one provider x 2 calls minimum)
     assert result.total_calls >= 2, f"Expected total_calls >= 2, got {result.total_calls}"
+    assert result.forecasts, "No forecasts extracted"
 
-    # All 7 schema fields must be present in result
-    result_field_names = {f.name for f in result.fields}
-    schema_field_names = {f["name"] for f in schema["fields"]}
-    assert result_field_names == schema_field_names, \
-        f"Missing fields: {schema_field_names - result_field_names}"
-    assert len(result.fields) == 7
-    assert result.schema_id == "generic_document"
-
-    # Title field must have a value and score >= 0.5
-    title_field = next((f for f in result.fields if f.name == "title"), None)
-    assert title_field is not None, "title field not found in result"
-    assert title_field.value is not None, "title value is None"
-    assert title_field.score >= 0.5, f"title score {title_field.score} < 0.5"
+    top = result.forecasts[0]
+    assert top.sector_name
+    assert top.score > 0
+    # Report forecasts sectors to 2040; at least one forecast should carry
+    # a target year or projected revenue.
+    assert any(f.year_forecast or f.revenue_forecast for f in result.forecasts)

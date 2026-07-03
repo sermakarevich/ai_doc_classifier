@@ -63,3 +63,29 @@ class MergeGroup(BaseModel):
 
 class MergeGroups(BaseModel):
     groups: list[MergeGroup]
+
+
+class Forecast(BaseModel):
+    sector_name: str
+    revenue_now: str | None = None
+    revenue_forecast: str | None = None
+    year_now: str | None = None
+    year_forecast: str | None = None
+    cagr: str | None = None
+    profit: str | None = None
+
+
+class ForecastExtraction(BaseModel):
+    forecasts: list[Forecast] = []
+
+
+class MergedForecast(Forecast):
+    count: int
+    total_calls: int
+    score: float
+
+
+class ForecastResult(BaseModel):
+    document: str
+    total_calls: int
+    forecasts: list[MergedForecast]
