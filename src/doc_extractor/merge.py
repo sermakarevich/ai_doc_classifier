@@ -17,6 +17,7 @@ from .models import (
     SchemaExtraction,
     ValueGroup,
 )
+from .constants import FORECAST_VALUE_FIELDS
 from .provider import OllamaProvider
 from .prompts import merge_prompt
 
@@ -209,11 +210,6 @@ async def merge_extractions(
 
 
 # ---- forecast merging ----
-
-FORECAST_VALUE_FIELDS = (
-    "revenue_now", "revenue_forecast", "year_now", "year_forecast", "cagr", "profit"
-)
-
 
 def _majority_value(values: list[str]) -> str | None:
     """Most common value by normalized form; ties broken by first appearance."""

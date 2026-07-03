@@ -11,13 +11,20 @@ from .merge import merge_forecasts
 
 from pydantic import BaseModel
 
+from .constants import (
+    DEFAULT_CALLS_PER_PROVIDER,
+    DEFAULT_MAX_PAGES,
+    DEFAULT_TIMEOUT_S,
+    DEFAULT_ZOOM,
+)
+
 
 class ExtractionConfig(BaseModel):
-    calls_per_provider: int = 2
-    timeout_s: float = 240.0
+    calls_per_provider: int = DEFAULT_CALLS_PER_PROVIDER
+    timeout_s: float = DEFAULT_TIMEOUT_S
     mode: Literal["text", "vision"] = "text"
-    max_pages: int = 12
-    zoom: float = 2.0
+    max_pages: int = DEFAULT_MAX_PAGES
+    zoom: float = DEFAULT_ZOOM
 
 
 async def run_extraction(

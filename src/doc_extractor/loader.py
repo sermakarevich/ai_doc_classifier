@@ -4,10 +4,13 @@ from pathlib import Path
 
 import fitz
 
+from doc_extractor.constants import DEFAULT_ZOOM
 from doc_extractor.models import Document
 
 
-def render_pdf_pages(path: str, zoom: float = 2.0, max_pages: int | None = None) -> list[bytes]:
+def render_pdf_pages(
+    path: str, zoom: float = DEFAULT_ZOOM, max_pages: int | None = None
+) -> list[bytes]:
     """Render PDF pages to PNG bytes for vision models."""
     p = Path(path)
     if not p.exists():

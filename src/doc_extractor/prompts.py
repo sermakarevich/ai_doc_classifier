@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from .constants import MAX_DOC_CHARS
 from .models import OutputSchema
-
-MAX_DOC_CHARS = 60_000
 
 
 def extraction_prompt(doc_text: str, schema: OutputSchema) -> str:

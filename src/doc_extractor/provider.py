@@ -10,6 +10,14 @@ import httpx
 from pydantic import BaseModel, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from .constants import (
+    DEFAULT_BASE_URL,
+    DEFAULT_PROVIDERS,
+    MAX_ATTEMPTS,
+    PROVIDERS_ENV_VAR,
+    TEMPERATURE,
+)
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
@@ -22,7 +30,7 @@ class StructuredOutputError(Exception):
 class ProviderConfig(BaseModel):
     model: str
     name: str = ""
-    base_url: str = "http://127.0.0.1:11435"
+    base_url: str = DEFAULT_BASE_URL
 
     @model_validator(mode="before")
     @classmethod
@@ -60,12 +68,12 @@ class OllamaProvider:
             "messages": [message],
             "stream": False,
             "format": response_model.model_json_schema(),
-            "options": {"temperature": 0.2},
+            "options": {"temperature": TEMPERATURE},
         }
 
         last_err: Exception = ValueError("unexpected error")
 
-        for attempt in range(2):
+        for attempt in range(MAX_ATTEMPTS):
             try:
                 async with httpx.AsyncClient() as client:
                     resp = await client.post(
@@ -80,7 +88,7 @@ class OllamaProvider:
             except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError, PydanticValidationError) as err:
                 last_err = err
                 logger.warning("Attempt %d failed for provider %s: %s", attempt + 1, self.name, err)
-                if attempt == 0:
+                if attempt < MAX_ATTEMPTS - 1:
                     logger.info("Retrying once for %s", self.name)
                     continue
                 break
@@ -88,10 +96,10 @@ class OllamaProvider:
         raise StructuredOutputError(str(last_err))
 
 
-def load_providers(env_var: str = "DOC_EXTRACTOR_PROVIDERS") -> list[OllamaProvider]:
+def load_providers(env_var: str = PROVIDERS_ENV_VAR) -> list[OllamaProvider]:
     raw = os.environ.get(env_var)
     if raw is None:
-        dicts = [{"model": "qwen3.6:latest"}, {"model": "gemma4:latest"}]
+        dicts = DEFAULT_PROVIDERS
     else:
         dicts = json.loads(raw)
 

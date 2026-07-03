@@ -6,6 +6,11 @@ import logging
 import sys
 from pathlib import Path
 
+from doc_extractor.constants import (
+    DEFAULT_CALLS_PER_PROVIDER,
+    DEFAULT_MAX_PAGES,
+    DEFAULT_TIMEOUT_S,
+)
 from doc_extractor.pipeline import ExtractionConfig, run_extraction
 
 logger = logging.getLogger(__name__)
@@ -22,8 +27,8 @@ def create_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument(
         "--calls-per-provider",
         type=int,
-        default=2,
-        help="Number of extraction calls per provider (default: 2)",
+        default=DEFAULT_CALLS_PER_PROVIDER,
+        help=f"Number of extraction calls per provider (default: {DEFAULT_CALLS_PER_PROVIDER})",
     )
     extract_parser.add_argument(
         "--output",
@@ -39,14 +44,14 @@ def create_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument(
         "--max-pages",
         type=int,
-        default=12,
-        help="Vision mode: max number of pages to render (default: 12)",
+        default=DEFAULT_MAX_PAGES,
+        help=f"Vision mode: max number of pages to render (default: {DEFAULT_MAX_PAGES})",
     )
     extract_parser.add_argument(
         "--timeout",
         type=float,
-        default=240.0,
-        help="Per-call timeout in seconds (default: 240)",
+        default=DEFAULT_TIMEOUT_S,
+        help=f"Per-call timeout in seconds (default: {DEFAULT_TIMEOUT_S:g})",
     )
     return parser
 
