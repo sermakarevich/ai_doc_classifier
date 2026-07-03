@@ -81,7 +81,7 @@ async def test_fan_out_all_raise_raises_all_calls_failed(fake_provider_a, fake_p
     assert all(isinstance(e, ValueError) for e in exc_info.value.errors)
 
 
-# ---- (d) slow call exceeding tiny timeout_s=0.01 dropped ----
+# ---- (d) slow call exceeding tiny timeout_s=0.01 -> AllCallsFailedError ----
 
 @pytest.mark.asyncio
 async def test_fan_out_slow_call_dropped_on_timeout(fake_provider_a: FakeProvider):
@@ -89,14 +89,16 @@ async def test_fan_out_slow_call_dropped_on_timeout(fake_provider_a: FakeProvide
         await asyncio.sleep(1)
         return {"ok": True}
 
-    results = await fan_out(
-        [fake_provider_a],
-        slow_call,
-        calls_per_provider=2,
-        timeout_s=0.01,
-    )
+    with pytest.raises(AllCallsFailedError) as exc_info:
+        await fan_out(
+            [fake_provider_a],
+            slow_call,
+            calls_per_provider=2,
+            timeout_s=0.01,
+        )
 
-    assert len(results) == 0
+    assert len(exc_info.value.errors) == 2
+    assert all(isinstance(e, asyncio.TimeoutError) for e in exc_info.value.errors)
 
 
 # ---- (e) mix of success and timeout ----
@@ -123,3 +125,14 @@ async def test_fan_out_mix_success_and_timeout(fake_provider_a, fake_provider_b)
     # provider_b 2 slow calls => 2 timeouts
     # provider_a 2 fast calls => 2 successes
     assert len(results) == 2
+
+
+# ---- (f) all timeouts -> AllCallsFailedError ----
+
+@pytest.mark.asyncio
+async def test_all_timeouts_raise():
+    async def slow_call(provider):
+        await asyncio.sleep(10)
+
+    with pytest.raises(AllCallsFailedError):
+        await fan_out(["p1"], slow_call, calls_per_provider=2, timeout_s=0.01)
