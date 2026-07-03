@@ -43,6 +43,18 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to write JSON result to",
     )
+    extract_parser.add_argument(
+        "--mode",
+        choices=["text", "vision"],
+        default="text",
+        help="'text': extract PDF text and send it; 'vision': render pages to PNG and send images (requires vision-capable models)",
+    )
+    extract_parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=12,
+        help="Vision mode: max number of pages to render (default: 12)",
+    )
     return parser
 
 
@@ -68,7 +80,11 @@ def main() -> None:
     schema_dict = json.loads(schema_path.read_text())
     schema = OutputSchema.model_validate(schema_dict)
 
-    config = ExtractionConfig(calls_per_provider=args.calls_per_provider)
+    config = ExtractionConfig(
+        calls_per_provider=args.calls_per_provider,
+        mode=args.mode,
+        max_pages=args.max_pages,
+    )
 
     result = asyncio.run(
         run_extraction(

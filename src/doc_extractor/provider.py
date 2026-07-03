@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -47,10 +48,16 @@ class OllamaProvider:
     def base_url(self) -> str:
         return self._config.base_url
 
-    async def structured(self, prompt: str, response_model: type[T]) -> T:
+    async def structured(
+        self, prompt: str, response_model: type[T], images: list[bytes] | None = None
+    ) -> T:
+        message: dict[str, object] = {"role": "user", "content": prompt}
+        if images:
+            message["images"] = [base64.b64encode(img).decode("ascii") for img in images]
+
         payload: dict[str, object] = {
             "model": self._config.model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [message],
             "stream": False,
             "format": response_model.model_json_schema(),
             "options": {"temperature": 0.2},

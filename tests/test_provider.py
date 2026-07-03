@@ -127,3 +127,47 @@ async def test_load_providers_env_override():
 
     if orig is not None:
         os.environ[sentinel] = orig
+
+
+async def test_structured_encodes_images_base64():
+    """images kwarg lands base64-encoded in the message payload."""
+    import base64
+
+    config = ProviderConfig(model="qwen3.6:latest")
+    provider = OllamaProvider(config)
+
+    fake_content = json.dumps({"fields": [{"name": "title", "value": "X"}]})
+    fake_resp = AsyncMock(spec=httpx.Response)
+    fake_resp.json.return_value = {"message": {"content": fake_content}}
+
+    client_ctx = AsyncMock()
+    client_ctx.post = AsyncMock(return_value=fake_resp)
+    client_ctx.__aenter__ = AsyncMock(return_value=client_ctx)
+    client_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    raw = b"\x89PNG fake"
+    with patch("doc_extractor.provider.httpx.AsyncClient", return_value=client_ctx):
+        await provider.structured("prompt", SchemaExtraction, images=[raw])
+
+    payload = client_ctx.post.call_args.kwargs["json"]
+    assert payload["messages"][0]["images"] == [base64.b64encode(raw).decode("ascii")]
+
+
+async def test_structured_no_images_key_when_absent():
+    config = ProviderConfig(model="qwen3.6:latest")
+    provider = OllamaProvider(config)
+
+    fake_content = json.dumps({"fields": []})
+    fake_resp = AsyncMock(spec=httpx.Response)
+    fake_resp.json.return_value = {"message": {"content": fake_content}}
+
+    client_ctx = AsyncMock()
+    client_ctx.post = AsyncMock(return_value=fake_resp)
+    client_ctx.__aenter__ = AsyncMock(return_value=client_ctx)
+    client_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("doc_extractor.provider.httpx.AsyncClient", return_value=client_ctx):
+        await provider.structured("prompt", SchemaExtraction)
+
+    payload = client_ctx.post.call_args.kwargs["json"]
+    assert "images" not in payload["messages"][0]

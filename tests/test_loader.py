@@ -25,3 +25,19 @@ def test_load_pdf_contains_arenas():
 def test_load_pdf_file_not_found():
     with pytest.raises(FileNotFoundError):
         load_pdf("/bogus/nonexistent.pdf")
+
+
+def test_render_pdf_pages_returns_png_bytes():
+    from doc_extractor.loader import render_pdf_pages
+
+    images = render_pdf_pages(str(PDF_PATH), zoom=1.0, max_pages=2)
+    assert len(images) == 2
+    for img in images:
+        assert img[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_render_pdf_pages_missing_file():
+    from doc_extractor.loader import render_pdf_pages
+
+    with pytest.raises(FileNotFoundError):
+        render_pdf_pages("missing.pdf")
