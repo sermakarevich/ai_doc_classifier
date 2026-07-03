@@ -106,7 +106,7 @@ async def test_load_providers_default_gives_2_providers():
 
     assert len(providers) == 2
     assert providers[0].name == "qwen3.6:latest"
-    assert providers[1].name == "gemma4:26b"
+    assert providers[1].name == "gemma4:latest"
 
     if orig is not None:
         os.environ[sentinel] = orig

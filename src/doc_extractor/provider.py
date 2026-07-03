@@ -83,7 +83,7 @@ class OllamaProvider:
 def load_providers(env_var: str = "DOC_EXTRACTOR_PROVIDERS") -> list[OllamaProvider]:
     raw = os.environ.get(env_var)
     if raw is None:
-        dicts = [{"model": "qwen3.6:latest"}, {"model": "gemma4:26b"}]
+        dicts = [{"model": "qwen3.6:latest"}, {"model": "gemma4:latest"}]
     else:
         dicts = json.loads(raw)
 
