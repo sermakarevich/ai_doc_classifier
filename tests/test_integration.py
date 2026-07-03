@@ -14,11 +14,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 PDF_PATH = ROOT / "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 SCHEMA_PATH = ROOT / "schema_sample.json"
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_INTEGRATION") != "1",
-    reason="RUN_INTEGRATION=1 required to run integration tests",
-)
-
 
 @pytest.fixture(scope="module")
 def schema() -> OutputSchema:
@@ -27,9 +22,13 @@ def schema() -> OutputSchema:
     return OutputSchema.model_validate(data)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_live_extraction_on_mckinsey_pdf(schema: OutputSchema):
     """End-to-end: load PDF, fan-out LLM calls, merge, assert results."""
+    if os.environ.get("RUN_INTEGRATION") != "1":
+        pytest.skip("RUN_INTEGRATION=1 required to run integration tests")
+
     assert PDF_PATH.exists(), f"Test PDF not found at {PDF_PATH}"
     assert schema.schema_id == "mckinsey_report"
     assert len(schema.fields) == 7
@@ -44,7 +43,7 @@ async def test_live_extraction_on_mckinsey_pdf(schema: OutputSchema):
         config=config,
     )
 
-    # total_calls must be at least 2 (one provider × 2 calls minimum)
+    # total_calls must be at least 2 (one provider x 2 calls minimum)
     assert result.total_calls >= 2, f"Expected total_calls >= 2, got {result.total_calls}"
 
     # All 7 schema fields must be present in result

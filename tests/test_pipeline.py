@@ -157,12 +157,8 @@ def test_parser_returns_argument_parser():
 
 def test_parser_extract_subcommand_exists():
     parser = create_parser()
-    # create_parser() returns the extract subparser, so "extract" is already consumed
-    args = parser.parse_args(["test.pdf", "--schema", "schema_sample.json"])
-    assert args.pdf == "test.pdf"
-    assert args.schema == "schema_sample.json"
-    assert args.calls_per_provider == 2
-    assert args.output is None
+    args = parser.parse_args(["extract", "test.pdf", "--schema", "schema_sample.json"])
+    assert args.command == "extract"
     assert args.pdf == "test.pdf"
     assert args.schema == "schema_sample.json"
     assert args.calls_per_provider == 2
@@ -172,6 +168,7 @@ def test_parser_extract_subcommand_exists():
 def test_parser_extract_with_all_options():
     parser = create_parser()
     args = parser.parse_args([
+        "extract",
         "x.pdf",
         "--schema", "s.json",
         "--calls-per-provider", "3",

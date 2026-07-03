@@ -43,7 +43,7 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to write JSON result to",
     )
-    return extract_parser
+    return parser
 
 
 def main() -> None:
