@@ -73,10 +73,11 @@ class OllamaProvider:
                         json=payload,
                         timeout=httpx.Timeout(300),
                     )
+                    resp.raise_for_status()
                     body = resp.json()
                     content = body["message"]["content"]
                     return response_model.model_validate_json(content)
-            except (json.JSONDecodeError, KeyError, TypeError, PydanticValidationError) as err:
+            except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError, PydanticValidationError) as err:
                 last_err = err
                 logger.warning("Attempt %d failed for provider %s: %s", attempt + 1, self.name, err)
                 if attempt == 0:
@@ -94,10 +95,4 @@ def load_providers(env_var: str = "DOC_EXTRACTOR_PROVIDERS") -> list[OllamaProvi
     else:
         dicts = json.loads(raw)
 
-    config_list = []
-    for d in dicts:
-        if "name" not in d:
-            d["name"] = d["model"]
-        config_list.append(ProviderConfig(**d))
-
-    return [OllamaProvider(c) for c in config_list]
+    return [OllamaProvider(ProviderConfig(**d)) for d in dicts]
