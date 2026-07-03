@@ -7,14 +7,8 @@ import logging
 import sys
 from pathlib import Path
 
-from doc_extractor.loader import load_pdf
-from doc_extractor.merge import merge_extractions
-from doc_extractor.models import ExtractionResult, OutputSchema, SchemaExtraction
+from doc_extractor.models import OutputSchema
 from doc_extractor.pipeline import ExtractionConfig, run_extraction
-from doc_extractor.prompts import extraction_prompt
-from doc_extractor.provider import OllamaProvider, load_providers
-from doc_extractor.fanout import fan_out
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
